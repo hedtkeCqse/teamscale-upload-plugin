@@ -1,11 +1,10 @@
 package eu.cqse.teamscale.jenkins.upload;
 
-import org.apache.tools.ant.DirectoryScanner;
-
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.tools.ant.DirectoryScanner;
 
 /**
  * Utilities for for the Teamscale Jenkins plugin.
@@ -21,7 +20,7 @@ public class TeamscaleUploadUtilities {
      */
     public static List<File> getFiles(File dirToScan, String pattern) throws IOException {
         DirectoryScanner directoryScanner = new DirectoryScanner();
-        String[] includes = {  pattern };
+        String[] includes = {pattern};
         directoryScanner.setIncludes(includes);
         directoryScanner.setBasedir(dirToScan);
         directoryScanner.scan();
