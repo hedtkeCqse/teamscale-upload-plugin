@@ -10,6 +10,7 @@ import com.cloudbees.plugins.credentials.domains.URIRequirementBuilder;
 import com.teamscale.client.ITeamscaleService;
 import com.teamscale.client.TeamscaleServiceGenerator;
 import edu.umd.cs.findbugs.annotations.CheckForNull;
+import edu.umd.cs.findbugs.annotations.NonNull;
 import eu.cqse.teamscale.client.JenkinsConsoleInterceptor;
 import hudson.EnvVars;
 import hudson.Extension;
@@ -31,6 +32,7 @@ import hudson.util.FormValidation;
 import hudson.util.ListBoxModel;
 import java.io.File;
 import java.io.IOException;
+import java.io.Serial;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -53,6 +55,7 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.tools.ant.DirectoryScanner;
 import org.jenkinsci.Symbol;
 import org.jenkinsci.remoting.RoleChecker;
+import org.jetbrains.annotations.NotNull;
 import org.kohsuke.stapler.AncestorInPath;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
@@ -80,11 +83,6 @@ public class TeamscaleUploadBuilder extends Notifier implements SimpleBuildStep 
      * For printing errors to jenkins console.
      */
     public static final String ERROR = "TS-ERROR: ";
-
-    /**
-     * For printing warnings to jenkins console.
-     */
-    public static final String WARNING = "TS-WARNING: ";
 
     /**
      * For printing info to jenkins console.
@@ -190,7 +188,7 @@ public class TeamscaleUploadBuilder extends Notifier implements SimpleBuildStep 
 
     @Override
     public void perform(
-            @Nonnull Run<?, ?> run, FilePath workspace, @Nonnull Launcher launcher, @Nonnull TaskListener listener)
+            @Nonnull Run<?, ?> run, @NotNull FilePath workspace, @NonNull EnvVars env, @Nonnull Launcher launcher, @Nonnull TaskListener listener)
             throws InterruptedException, IOException {
 
         StandardUsernamePasswordCredentials credential = CredentialsProvider.findCredentialById(
@@ -218,7 +216,7 @@ public class TeamscaleUploadBuilder extends Notifier implements SimpleBuildStep 
                 Duration.ofSeconds(60),
                 new JenkinsConsoleInterceptor(listener.getLogger()));
 
-        String rev = getScmRevision(run.getEnvironment(listener));
+        String rev = getScmRevision(env);
         listener.getLogger().println(INFO + "revision: " + revision);
         if (rev == null) {
             listener.getLogger()
@@ -346,8 +344,8 @@ public class TeamscaleUploadBuilder extends Notifier implements SimpleBuildStep 
 
             return result.includeMatchingAs(
                             project instanceof Queue.Task
-                                    ? Tasks.getAuthenticationOf((Queue.Task) project)
-                                    : ACL.SYSTEM,
+                                    ? Tasks.getAuthenticationOf2((Queue.Task) project)
+                                    : ACL.SYSTEM2,
                             project,
                             StandardUsernamePasswordCredentials.class,
                             URIRequirementBuilder.fromUri(url).build(),
@@ -372,10 +370,10 @@ public class TeamscaleUploadBuilder extends Notifier implements SimpleBuildStep 
             if (StringUtils.isBlank(value)) {
                 return FormValidation.error("Upload will fail without credentials");
             }
-            if (CredentialsProvider.listCredentials(
-                            StandardUsernameCredentials.class,
+            if (CredentialsProvider.listCredentialsInItem(
+                            StandardUsernamePasswordCredentials.class,
                             item,
-                            item instanceof Queue.Task ? Tasks.getAuthenticationOf((Queue.Task) item) : ACL.SYSTEM,
+                            item instanceof Queue.Task ? Tasks.getAuthenticationOf2((Queue.Task) item) : ACL.SYSTEM2,
                             URIRequirementBuilder.fromUri(url).build(),
                             CredentialsMatchers.withId(value))
                     .isEmpty()) {
@@ -391,7 +389,7 @@ public class TeamscaleUploadBuilder extends Notifier implements SimpleBuildStep 
          * @return ok or not okay.
          */
         private FormValidation getFormValidation(@QueryParameter String value) {
-            if (value.length() == 0) {
+            if (value.isEmpty()) {
                 return FormValidation.error(Messages.TeamscaleBuilder_DescriptorImpl_errors_requiredField());
             }
             return FormValidation.ok();
@@ -411,6 +409,7 @@ public class TeamscaleUploadBuilder extends Notifier implements SimpleBuildStep 
 
     private static class CoverageCollectingFileCallable extends MasterToSlaveFileCallable<Map<String, String>> {
 
+        @Serial
         private static final long serialVersionUID = 1L;
 
         private final String[] includes;
@@ -424,7 +423,7 @@ public class TeamscaleUploadBuilder extends Notifier implements SimpleBuildStep 
 
         @Override
         public Map<String, String> invoke(File directory, VirtualChannel virtualChannel)
-                throws IOException, InterruptedException {
+                throws IOException {
             DirectoryScanner directoryScanner = new DirectoryScanner();
             directoryScanner.setBasedir(directory);
             directoryScanner.setIncludes(includes);

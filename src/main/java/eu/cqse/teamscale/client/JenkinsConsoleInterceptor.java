@@ -14,7 +14,7 @@ import okhttp3.ResponseBody;
  */
 public class JenkinsConsoleInterceptor implements Interceptor {
 
-    private PrintStream stream;
+    private final PrintStream stream;
 
     /**
      * Constructor for intercepting the console output.
